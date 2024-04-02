@@ -1,3 +1,8 @@
+import sys
+import os
+# append a new directory to sys.path
+sys.path.append(os.getcwd())
+
 import unittest, logging
 import numpy as np
 from neu4mes import *
@@ -257,3 +262,5 @@ class Neu4mesCreateDatasetTest(unittest.TestCase):
         self.assertEqual((9,),test.inout_asarray['out__-z1'].shape)
         self.assertEqual([1.225, 1.224, 1.222, 1.22, 1.217, 1.214, 1.211, 1.207, 1.204],test.inout_asarray['out__-z1'].tolist())
 
+if __name__ == '__main__':
+    unittest.main()

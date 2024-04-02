@@ -1,20 +1,24 @@
-import neu4mes
-import tensorflow.keras.backend
+import torch
+import torch.nn as nn
 
-class Sin(neu4mes.Relation):
+from neu4mes.relation import Relation, NeuObj
+from neu4mes.input import Input
+from neu4mes.model import Model
+
+class Sin(Relation):
     def __init__(self, obj):
         self.name = ''
         if type(obj) is tuple:
             super().__init__(obj[0].json)
-            self.name = obj[0].name+'_sin'+str(neu4mes.NeuObj.count)
+            self.name = obj[0].name+'_sin'+str(NeuObj.count)
             self.json['Relations'][self.name] = {
                 'Sin':[(obj[0].name,obj[1])],
             }
-        elif (type(obj) is neu4mes.Input or
-              type(obj) is neu4mes.Relation or
-              issubclass(type(obj), neu4mes.Relation)):
+        elif (type(obj) is Input or
+              type(obj) is Relation or
+              issubclass(type(obj), Relation)):
             super().__init__(obj.json)
-            self.name = obj.name+'_sin'+str(neu4mes.NeuObj.count)
+            self.name = obj.name+'_sin'+str(NeuObj.count)
             self.json['Relations'][self.name] = {
                 'Sin':[obj.name]
             }
@@ -23,20 +27,20 @@ class Sin(neu4mes.Relation):
 
 
 
-class Cos(neu4mes.Relation):
+class Cos(Relation):
     def __init__(self, obj):
         self.name = ''
         if type(obj) is tuple:
             super().__init__(obj[0].json)
-            self.name = obj[0].name+'_cos'+str(neu4mes.NeuObj.count)
+            self.name = obj[0].name+'_cos'+str(NeuObj.count)
             self.json['Relations'][self.name] = {
                 'Cos':[(obj[0].name,obj[1])],
             }
-        elif (type(obj) is neu4mes.Input or
-              type(obj) is neu4mes.Relation or
-              issubclass(type(obj), neu4mes.Relation)):
+        elif (type(obj) is Input or
+              type(obj) is Relation or
+              issubclass(type(obj), Relation)):
             super().__init__(obj.json)
-            self.name = obj.name+'_cos'+str(neu4mes.NeuObj.count)
+            self.name = obj.name+'_cos'+str(NeuObj.count)
             self.json['Relations'][self.name] = {
                 'Cos':[obj.name]
             }
@@ -45,20 +49,20 @@ class Cos(neu4mes.Relation):
 
 
 
-class Tan(neu4mes.Relation):
+class Tan(Relation):
     def __init__(self, obj):
         self.name = ''
         if type(obj) is tuple:
             super().__init__(obj[0].json)
-            self.name = obj[0].name+'_tan'+str(neu4mes.NeuObj.count)
+            self.name = obj[0].name+'_tan'+str(NeuObj.count)
             self.json['Relations'][self.name] = {
                 'Tan':[(obj[0].name,obj[1])],
             }
-        elif (type(obj) is neu4mes.Input or
-              type(obj) is neu4mes.Relation or
-              issubclass(type(obj), neu4mes.Relation)):
+        elif (type(obj) is Input or
+              type(obj) is Relation or
+              issubclass(type(obj), Relation)):
             super().__init__(obj.json)
-            self.name = obj.name+'_tan'+str(neu4mes.NeuObj.count)
+            self.name = obj.name+'_tan'+str(NeuObj.count)
             self.json['Relations'][self.name] = {
                 'Tan':[obj.name]
             }
@@ -66,14 +70,34 @@ class Tan(neu4mes.Relation):
             raise Exception('Type is not supported!')
 
 
-def createSin(self, name, input):
-    return tensorflow.keras.backend.sin(input)
-def createCos(self, name, input):
-    return tensorflow.keras.backend.cos(input)
-def createTan(self, name, input):
-    return tensorflow.keras.backend.tan(input)
+class Sin_Layer(nn.Module):
+    def __init__(self,):
+        super(Sin_Layer, self).__init__()
+    def forward(self, x):
+        return torch.sin(x)
+
+def createSin(self, *inputs):
+    return Sin_Layer()
+
+class Cos_Layer(nn.Module):
+    def __init__(self,):
+        super(Cos_Layer, self).__init__()
+    def forward(self, x):
+        return torch.cos(x)
+
+def createCos(self, *inputs):
+    return Cos_Layer()
+
+class Tan_Layer(nn.Module):
+    def __init__(self,):
+        super(Tan_Layer, self).__init__()
+    def forward(self, x):
+        return torch.tan(x)
+
+def createTan(self, *inputs):
+    return Tan_Layer()
 
 
-setattr(neu4mes.Neu4mes, 'Sin', createSin)
-setattr(neu4mes.Neu4mes, 'Tan', createTan)
-setattr(neu4mes.Neu4mes, 'Cos', createCos)
+setattr(Model, 'Sin', createSin)
+setattr(Model, 'Tan', createTan)
+setattr(Model, 'Cos', createCos)

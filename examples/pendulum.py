@@ -1,3 +1,8 @@
+import sys
+import os
+# append a new directory to sys.path
+sys.path.append(os.getcwd())
+
 from neu4mes import *
 from neu4mes.visualizer import StandardVisualizer
 
@@ -18,8 +23,9 @@ pendolum.neuralizeModel(0.05)
 
 # Data load
 data_struct = ['time','theta','theta_s','','','torque']
-data_folder = './datasets/pendulum/data/'
+#data_folder = './datasets/pendulum/data/'
+data_folder = os.path.join('examples', 'datasets', 'pendulum', 'data')
 pendolum.loadData(data_struct, folder = data_folder)
 
 # Neural network train
-pendolum.trainModel(test_percentage = 30, show_results = True)
+pendolum.trainModel(train_size=0.7, show_results = True)

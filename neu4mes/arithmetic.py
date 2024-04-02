@@ -1,19 +1,19 @@
-import neu4mes
-import tensorflow.keras.layers
-import tensorflow.keras.backend as K
+import torch.nn as nn
+import torch
 
-
+from neu4mes.relation import Relation, merge, NeuObj
+from neu4mes.model import Model
 
 sum_relation_name = 'Sum'
 minus_relation_name = 'Minus'
 subtract_relation_name = 'Subtract'
 square_relation_name = 'Square'
 
-class Sum(neu4mes.Relation):
+class Sum(Relation):
     def __init__(self, obj1, obj2):
         super().__init__(obj1.json)
-        self.json = neu4mes.merge(obj1.json,obj2.json)
-        self.name = obj1.name+'_sum'+str(neu4mes.NeuObj.count)
+        self.json = merge(obj1.json,obj2.json)
+        self.name = obj1.name+'_sum'+str(NeuObj.count)
         self.json['Relations'][self.name] = {sum_relation_name:[]}
         if type(obj1) is Sum:
             for el in self.json['Relations'][obj1.name]['Sum']:
@@ -27,11 +27,11 @@ class Sum(neu4mes.Relation):
             self.json['Relations'][self.name][sum_relation_name].append(obj1.name)
             self.json['Relations'][self.name][sum_relation_name].append(obj2.name)
 
-class Subtract(neu4mes.Relation):
+class Subtract(Relation):
     def __init__(self, obj1, obj2):
         super().__init__(obj1.json)
-        self.json = neu4mes.merge(obj1.json,obj2.json)
-        self.name = obj1.name+'_sub'+str(neu4mes.NeuObj.count)
+        self.json = merge(obj1.json,obj2.json)
+        self.name = obj1.name+'_sub'+str(NeuObj.count)
         self.json['Relations'][self.name] = {sum_relation_name:[]}
         if type(obj1) is Subtract:
             for el in self.json['Relations'][obj1.name]['Sub']:
@@ -45,7 +45,7 @@ class Subtract(neu4mes.Relation):
             self.json['Relations'][self.name][sum_relation_name].append(obj1.name)
             self.json['Relations'][self.name][sum_relation_name].append(obj2.name)
 
-class Minus(neu4mes.Relation):
+class Minus(Relation):
     def __init__(self, obj = None):
         if obj is None:
             return
@@ -56,7 +56,7 @@ class Minus(neu4mes.Relation):
             minus_relation_name:[obj_name]
         }
 
-class Square(neu4mes.Relation):
+class Square(Relation):
     def __init__(self, obj):
         if obj is None:
             return
@@ -67,19 +67,53 @@ class Square(neu4mes.Relation):
             square_relation_name:[obj_name]
         }
 
-def createMinus(self, name, input):
-    return -input
+class Minus_Layer(nn.Module):
+    def __init__(self):
+        super(Minus_Layer, self).__init__()
 
-def createSum(self, name, input):
-    return tensorflow.keras.layers.Add(name = name)(input)
+    def forward(self, x):
+        return -x
 
-def createSubtract(self, name, input):
-    return tensorflow.keras.layers.Subtract(name = name)(input)
+def createMinus(self, *inputs):
+    return Minus_Layer()
 
-def createSquare(self, name, input):
-    return K.pow(input,2)
+class Sum_Layer(nn.Module):
+    def __init__(self):
+        super(Sum_Layer, self).__init__()
 
-setattr(neu4mes.Neu4mes, minus_relation_name, createMinus)
-setattr(neu4mes.Neu4mes, sum_relation_name, createSum)
-setattr(neu4mes.Neu4mes, subtract_relation_name, createSubtract)
-setattr(neu4mes.Neu4mes, square_relation_name, createSquare)
+    def forward(self, inputs):
+        out = inputs[0]
+        for el in inputs[1:]:
+            out = out + el
+        return out
+        #return torch.stack(inputs).sum(dim=0)
+
+def createSum(name, *inputs):
+    #return tensorflow.keras.layers.Add(name = name)(input)
+    return Sum_Layer()
+
+class Diff_Layer(nn.Module):
+    def __init__(self):
+        super(Diff_Layer, self).__init__()
+
+    def forward(self, *inputs):
+        # Perform element-wise subtraction
+        return torch.stack(inputs).diff(dim=0)
+
+def createSubtract(self, *inputs):
+    #return tensorflow.keras.layers.Subtract(name = name)(input)
+    return Diff_Layer()
+
+class Square_Layer(nn.Module):
+    def __init__(self):
+        super(Square_Layer, self).__init__()
+    def forward(self, x):
+        return torch.pow(x,2)
+
+def createSquare(self, *inputs):
+    return Square_Layer()
+
+setattr(Model, minus_relation_name, createMinus)
+setattr(Model, sum_relation_name, createSum)
+setattr(Model, subtract_relation_name, createSubtract)
+setattr(Model, square_relation_name, createSquare)

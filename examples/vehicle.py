@@ -1,3 +1,8 @@
+import sys
+import os
+# append a new directory to sys.path
+sys.path.append(os.getcwd())
+
 from neu4mes import *
 from neu4mes.visualizer import StandardVisualizer
 
@@ -30,8 +35,9 @@ mymodel.neuralizeModel(0.05)
 
 # Data load
 data_struct = ['velocity','engine','brake','gear','travel','altitude','acc','velKal','acceleration']
-data_folder = './datasets/vehicle_data/'
+#data_folder = './datasets/vehicle_data/'
+data_folder = os.path.join('examples', 'datasets', 'vehicle_data')
 mymodel.loadData(data_struct, folder = data_folder, skiplines = 1)
 
 # Neural network train
-mymodel.trainModel(test_percentage = 30, show_results=True)
+mymodel.trainModel(train_size=0.7, show_results=True)

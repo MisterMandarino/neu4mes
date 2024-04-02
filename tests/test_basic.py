@@ -1,3 +1,8 @@
+import sys
+import os
+# append a new directory to sys.path
+sys.path.append(os.getcwd())
+
 import unittest, logging
 from neu4mes import *
 
@@ -14,3 +19,6 @@ class Neu4mesBasicElementTest(unittest.TestCase):
 
     def test_output(self):
         pass
+
+if __name__ == '__main__':
+    unittest.main()

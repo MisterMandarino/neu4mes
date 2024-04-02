@@ -1,5 +1,4 @@
-import types, copy
-import pprint
+import copy
 
 def merge(source, destination, main = True):
     if main:
@@ -31,7 +30,7 @@ class NeuObj():
             }
 
     def __xor__(self, val):
-        from neu4mes import Square
+        from neu4mes.arithmetic import Square
         if val == 2:
             return Square(self)  
         else:
@@ -42,13 +41,13 @@ class Relation(NeuObj):
         super().__init__(json)
 
     def __neg__(self):
-        from neu4mes import Minus
+        from neu4mes.arithmetic import Minus
         return Minus(self)
     
     def __add__(self, obj): 
-        from neu4mes import Sum
+        from neu4mes.arithmetic import Sum
         return Sum(self, obj)
 
     def __minus__(self, obj): 
-        from neu4mes import Subtract
+        from neu4mes.arithmetic import Subtract
         return Subtract(self, obj)      
