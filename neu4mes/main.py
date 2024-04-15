@@ -78,7 +78,7 @@ class Neu4mes:
         # Training params
         self.batch_size = 128                               # batch size
         self.learning_rate = 0.0005                         # learning rate for NN
-        self.num_of_epochs = 20                             # number of epochs
+        self.num_of_epochs = 100                             # number of epochs
         self.rnn_batch_size = self.batch_size               # batch size for RNN
         self.rnn_window = None                              # window of the RNN
         self.rnn_learning_rate = self.learning_rate/10000   # learning rate for RNN
@@ -303,7 +303,7 @@ class Neu4mes:
     """
     Analysis of the results
     """
-    def resultAnalysis(self, train_loss, test_loss, test_data):
+    def resultAnalysis(self, train_loss, test_loss, x_test, y_test, n_samples):
         ## Plot train loss and test loss
         plt.plot(train_loss, label='train loss')
         plt.plot(test_loss, label='test loss')
@@ -312,21 +312,29 @@ class Neu4mes:
 
         # List of keys
         output_keys = list(self.model_def['Outputs'].keys())
+        number_of_samples = int(n_samples*self.batch_size - self.batch_size) 
 
         # Performance parameters
-        self.performance['se'] = np.empty([len(output_keys),len(test_data)])
+        self.performance['se'] = np.empty([len(output_keys),number_of_samples])
         self.performance['mse'] = np.empty([len(output_keys),])
         self.performance['rmse_test'] = np.empty([len(output_keys),])
         self.performance['fvu'] = np.empty([len(output_keys),])
 
         # Prediction on test samples
-        test_loader = DataLoader(dataset=test_data, batch_size=1, num_workers=0, shuffle=False)
-        self.prediction = np.empty((len(output_keys), len(test_data)))
-        self.label = np.empty((len(output_keys), len(test_data)))
+        #test_loader = DataLoader(dataset=test_data, batch_size=1, num_workers=0, shuffle=False)
+        self.prediction = np.empty((len(output_keys), number_of_samples))
+        self.label = np.empty((len(output_keys), number_of_samples))
 
         with torch.inference_mode():
             self.model.eval()
-            for idx, (X, Y) in enumerate(test_loader):
+            for idx in range(number_of_samples):
+                X, Y = {}, {}
+                for key, val in x_test.items():
+                    #item[key] = torch.tensor(val[index], dtype=torch.float32)
+                    X[key] = torch.from_numpy(val[idx]).to(torch.float32)
+                for key, val in y_test.items():
+                    Y[key] = torch.tensor(val[idx], dtype=torch.float32)
+
                 pred = self.model(X)
                 for i, key in enumerate(output_keys):
                     self.prediction[i][idx] = pred[key].item() 
@@ -365,6 +373,7 @@ class Neu4mes:
         ## Split train and test
         X_train, Y_train = {}, {}
         X_test, Y_test = {}, {}
+        n_samples_train, n_samples_test = None, None
         for key,data in self.inout_data_time_window.items():
             if data:
                 samples = np.asarray(data)
@@ -374,17 +383,20 @@ class Neu4mes:
                 if key in self.model_def['Inputs'].keys():
                     X_train[key] = samples[:int(len(samples)*train_size)]
                     X_test[key] = samples[int(len(samples)*train_size):]
+                    if n_samples_train is None:
+                        n_samples_train = round(len(X_train[key]) / self.batch_size)
+                    if n_samples_test is None:
+                        n_samples_test = round(len(X_test[key]) / self.batch_size)
                 elif key in self.model_def['Outputs'].keys():
                     Y_train[key] = samples[:int(len(samples)*train_size)]
                     Y_test[key] = samples[int(len(samples)*train_size):]
 
         ## Build the dataset
-        train_data = Neu4MesDataset(X_train, Y_train)
-        test_data = Neu4MesDataset(X_test, Y_test)
+        #train_data = Neu4MesDataset(X_train, Y_train)
+        #test_data = Neu4MesDataset(X_test, Y_test)
         
-
-        self.train_loader = DataLoader(dataset=train_data, batch_size=self.batch_size, num_workers=0, shuffle=False)
-        self.test_loader = DataLoader(dataset=test_data, batch_size=self.batch_size, num_workers=0, shuffle=False)
+        #self.train_loader = DataLoader(dataset=train_data, batch_size=self.batch_size, num_workers=0, shuffle=False)
+        #self.test_loader = DataLoader(dataset=test_data, batch_size=self.batch_size, num_workers=0, shuffle=False)
 
         ## define optimizer and loss function
         self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
@@ -394,9 +406,17 @@ class Neu4mes:
 
         for iter in range(self.num_of_epochs):
             self.model.train()
-            start = datetime.now()
             train_loss = []
-            for X, Y in self.train_loader:
+            for i in range(n_samples_train):
+
+                idx = i*self.batch_size
+                X, Y = {}, {}
+                for key, val in X_train.items():
+                    #item[key] = torch.tensor(val[index], dtype=torch.float32)
+                    X[key] = torch.from_numpy(val[idx:idx+self.batch_size]).to(torch.float32)
+                for key, val in Y_train.items():
+                    Y[key] = torch.tensor(val[idx:idx+self.batch_size], dtype=torch.float32)
+
                 #inputs, labels = inputs.to(device), labels.to(device)
                 self.optimizer.zero_grad()
                 out = self.model(X)
@@ -408,7 +428,16 @@ class Neu4mes:
 
             self.model.eval()
             test_loss = []
-            for X, Y in self.test_loader:
+            for i in range(n_samples_test):
+
+                idx = i*self.batch_size
+                X, Y = {}, {}
+                for key, val in X_test.items():
+                    #item[key] = torch.tensor(val[index], dtype=torch.float32)
+                    X[key] = torch.from_numpy(val[idx:idx+self.batch_size]).to(torch.float32)
+                for key, val in Y_test.items():
+                    Y[key] = torch.tensor(val[idx:idx+self.batch_size], dtype=torch.float32)
+
                 #inputs, labels = inputs.to(device), labels.to(device)
                 out = self.model(X)
                 loss = self.loss_fn(out, Y)
@@ -419,9 +448,8 @@ class Neu4mes:
             test_losses[iter] = test_loss
 
             if iter % 10 == 0:
-                time = datetime.now() - start
-                print(f'Epoch {iter+1}/{self.num_of_epochs}, Train Loss {train_loss:.4f}, Test Loss {test_loss:.4f}, Duration: {time}')
+                print(f'Epoch {iter+1}/{self.num_of_epochs}, Train Loss {train_loss:.4f}, Test Loss {test_loss:.4f}')
 
         # Show the analysis of the Result
         if show_results:
-            self.resultAnalysis(train_losses, test_losses, test_data)
+            self.resultAnalysis(train_losses, test_losses, X_test, Y_test, n_samples_test)

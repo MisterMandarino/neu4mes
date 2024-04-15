@@ -30,7 +30,10 @@ class LocalModel_Layer(nn.Module):
         linear_out = self.linear(args[0])
         one_hot = torch.nn.functional.one_hot(args[1].to(torch.int64), num_classes=self.classes).squeeze().to(torch.float32)
         out = torch.mul(linear_out, one_hot)
-        out = torch.sum(out, dim=1, keepdim=True)
+        if len(out.shape) == 1:
+            out = torch.sum(out, dim=0, keepdim=True)
+        else:
+            out = torch.sum(out, dim=1, keepdim=True)
 
         #one_hot = torch.nn.functional.one_hot(args[1].to(torch.int64), num_classes=self.classes).squeeze().T.to(torch.float32)
         #out = torch.matmul(linear_out, one_hot)
