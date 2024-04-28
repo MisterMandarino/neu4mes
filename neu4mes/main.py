@@ -45,6 +45,7 @@ class Neu4mes:
         self.rnn_inputs_for_model = {}      # RNN element - clean network inputs
         self.rnn_init_state = {}            # RNN element - for the states of RNN
         self.relations = {}                 # NN element - operations
+        self.relation_samples = {}          # N samples for each relation
         self.outputs = {}                   # NN element - clean network outputs
 
         self.output_relation = {}           # dict with the outputs
@@ -126,96 +127,82 @@ class Neu4mes:
         # Sample time is used to define the number of sample for each time window
         if sample_time:
             self.model_def["SampleTime"] = sample_time
+        self.MP(pprint,self.model_def)
 
-        # Look for all the inputs referred to each outputs
         # Set the maximum time window for each input
-        relations = self.model_def['Relations']
-        for outel in self.model_def['Outputs']:
-            relel = relations.get(outel)
-            for reltype, relvalue in relel.items():
-                self.__setInput(relvalue, outel)
+        for name, params in self.model_def['Relations'].items():
+            if name not in self.model_def['Outputs'].keys():
+                relation_params = params[1]
+                for rel in relation_params:
+                    if type(rel) is tuple:
+                        if rel[0] in self.model_def['Inputs'].keys():
+                            tw = rel[1]
+                            if type(tw) is list: ## backward + forward
+                                if rel[0] in self.input_tw_backward.keys(): ## Update if grater
+                                    self.input_tw_backward[rel[0]] = max(abs(tw[0]), self.input_tw_backward[rel[0]])
+                                    self.input_tw_forward[rel[0]] = max(tw[1], self.input_tw_forward[rel[0]])
+                                else:
+                                    self.input_tw_backward[rel[0]] = abs(tw[0])
+                                    self.input_tw_forward[rel[0]] = tw[1]
+                            else: ## Only backward
+                                if rel[0] in self.input_tw_backward.keys(): ## Update if grater
+                                    self.input_tw_backward[rel[0]] = max(tw, self.input_tw_backward[rel[0]])
+                                    self.input_tw_forward[rel[0]] = max(0, self.input_tw_forward[rel[0]])
+                                else:
+                                    self.input_tw_backward[rel[0]] = tw
+                                    self.input_tw_forward[rel[0]] = 0
+
+                            self.input_ns_backward[rel[0]] = int(self.input_tw_backward[rel[0]] / self.model_def['SampleTime'])
+                            self.input_ns_forward[rel[0]] = int(self.input_tw_forward[rel[0]] / self.model_def['SampleTime'])
+                            self.input_n_samples[rel[0]] = self.input_ns_backward[rel[0]] + self.input_ns_forward[rel[0]]
+                    else:
+                        if rel in self.model_def['Inputs'].keys(): ## instantaneous input
+                            if rel not in self.input_tw_backward.keys():
+                                self.input_tw_backward[rel] = self.model_def['SampleTime']
+                                self.input_tw_forward[rel] = 0
+
+                                self.input_ns_backward[rel] = 1
+                                self.input_ns_forward[rel] = 0
+                                self.input_n_samples[rel] = self.input_ns_backward[rel] + self.input_ns_forward[rel]
+
+        self.max_samples_backward = max(self.input_ns_backward.values())
+        self.max_samples_forward = max(self.input_ns_forward.values())
+        self.max_n_samples = self.max_samples_forward + self.max_samples_backward
 
         self.MP(pprint,{"window_backward": self.input_tw_backward, "window_forward":self.input_tw_forward})
+        self.MP(pprint,{"samples_backward": self.input_ns_backward, "samples_forward":self.input_ns_forward})
+        self.MP(pprint,{"input_n_samples": self.input_n_samples})
+        self.MP(pprint,{"max_samples_backward": self.max_samples_backward, "max_samples_forward":self.max_samples_forward, "max_samples":self.max_n_samples})
 
-        # Building the inputs considering the dimension of the maximum time window forward + backward
-        for key,val in self.model_def['Inputs'].items():
-            input_ns_backward_aux = int(self.input_tw_backward[key]/self.model_def['SampleTime'])
-            input_ns_forward_aux = int(-self.input_tw_forward[key]/self.model_def['SampleTime'])
+        ## Get samples per relation
+        for name, inputs in self.model_def['Relations'].items():
+            input_samples = {}
+            for input_name in inputs[1]:
+                if type(input_name) is tuple: ## we have a window
+                    if type(input_name[1]) is list: ## we have the forward and backward window
+                        if input_name[0] in self.model_def['Inputs']:
+                            backward = self.input_ns_backward[input_name[0]] - int(abs(input_name[1][0])/sample_time)
+                            forward = self.input_ns_backward[input_name[0]] + int(abs(input_name[1][1])/sample_time)
+                        else:
+                            backward = int(abs(input_name[1][0])/sample_time)
+                            forward = int(abs(input_name[1][1])/sample_time)
+                        input_samples[input_name[0]] = {'backward':backward, 'forward':forward}
+                    else: ## we have only the backward window
+                        if input_name[0] in self.model_def['Inputs']:
+                            backward = self.input_ns_backward[input_name[0]] - int(abs(input_name[1])/sample_time)
+                            forward = self.input_ns_backward[input_name[0]] + 0
+                        input_samples[input_name[0]] = {'backward':backward, 'forward':forward}
+                else: ## we have no window
+                    input_samples[input_name] = {'backward':0, 'forward':1}
 
-            # Find the biggest window backwards for building the dataset
-            if input_ns_backward_aux > self.max_samples_backward:
-                self.max_samples_backward = input_ns_backward_aux
+            self.relation_samples[name] = input_samples
 
-            # Find the biggest horizon forwars for building the dataset
-            if input_ns_forward_aux > self.max_samples_forward:
-                self.max_samples_forward = input_ns_forward_aux
+        self.MP(pprint,{"relation_samples": self.relation_samples})
 
-            # Find the biggest n sample for building the dataset
-            if input_ns_forward_aux+input_ns_backward_aux > self.max_n_samples:
-                self.max_n_samples = input_ns_forward_aux+input_ns_backward_aux
-
-            # Defining the number of sample for each signal
-            if self.input_n_samples.get(key):
-                if input_ns_backward_aux+input_ns_forward_aux > self.input_n_samples[key]:
-                    self.input_n_samples[key] = input_ns_backward_aux+input_ns_forward_aux
-                if input_ns_backward_aux > self.input_ns_backward[key]:
-                    self.input_ns_backward[key] = input_ns_backward_aux
-                if input_ns_forward_aux > self.input_ns_forward[key]:
-                    self.input_ns_forward[key] = input_ns_forward_aux
-            else:
-                self.input_n_samples[key] = input_ns_backward_aux+input_ns_forward_aux
-                self.input_ns_backward[key] = input_ns_backward_aux
-                self.input_ns_forward[key] = input_ns_forward_aux
-
-        self.MP(print,"max_n_samples:"+str(self.max_n_samples))
-        self.MP(pprint,{"input_n_samples":self.input_n_samples})
-        self.MP(pprint,{"input_ns_backward":self.input_ns_backward})
-        self.MP(pprint,{"input_ns_forward":self.input_ns_forward})
 
         ## Build the network
-        self.model = Model(self.model_def['Inputs'],self.model_def['Outputs'],self.model_def['Relations'], self.input_n_samples)
-
-    #
-    # Recursive method that terminates all inputs that result in a specific relationship for an output
-    # During the procedure the dimension of the time window for each input is define
-    #
-    def __setInput(self, relvalue, outel):
-        for el in relvalue:
-            if type(el) is tuple:
-                if el[0] in self.model_def['Inputs']:
-                    time_window = self.input_tw_backward.get(el[0])
-                    if time_window is not None:
-                        if type(el[1]) is tuple:
-                            if self.input_tw_backward[el[0]] < el[1][0]:
-                                self.input_tw_backward[el[0]] = el[1][0]
-                            if self.input_tw_forward[el[0]] > el[1][1]:
-                                self.input_tw_forward[el[0]] = el[1][1]
-                        else:
-                            if self.input_tw_backward[el[0]] < el[1]:
-                                self.input_tw_backward[el[0]] = el[1]
-                    else:
-                        if type(el[1]) is tuple:
-                            self.input_tw_backward[el[0]] = el[1][0]
-                            self.input_tw_forward[el[0]] = el[1][1]
-                        else:
-                            self.input_tw_backward[el[0]] = el[1]
-                            self.input_tw_forward[el[0]] = 0
-                else:
-                    raise Exception("A window on internal signal is not supported!")
-            else:
-                if el in self.model_def['Inputs']:
-                    time_window = self.input_tw_backward.get(el)
-                    if time_window is None:
-                        self.input_tw_backward[el] = self.model_def['SampleTime']
-                        self.input_tw_forward[el] = 0
-                else:
-                    relel = self.model_def['Relations'].get((outel,el))
-                    if relel is None:
-                        relel = self.model_def['Relations'].get(el)
-                        if relel is None:
-                            raise Exception("Graph is not completed!")
-                    for reltype, relvalue in relel.items():
-                        self.__setInput(relvalue, outel)
+        self.model = Model(self.model_def, self.relation_samples)
+        print(self.model)
 
     """
     Loading of the data set files and generate the structure for the training considering the structure of the input and the output
@@ -331,7 +318,7 @@ class Neu4mes:
                 X, Y = {}, {}
                 for key, val in x_test.items():
                     #item[key] = torch.tensor(val[index], dtype=torch.float32)
-                    X[key] = torch.from_numpy(val[idx]).to(torch.float32)
+                    X[key] = torch.from_numpy(val[idx]).to(torch.float32).unsqueeze(dim=0)
                 for key, val in y_test.items():
                     Y[key] = torch.tensor(val[idx], dtype=torch.float32)
 

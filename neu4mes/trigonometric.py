@@ -1,71 +1,35 @@
 import torch
 import torch.nn as nn
 
-from neu4mes.relation import Relation, NeuObj
+from neu4mes.relation import ToStream, NeuObj, Stream, Relation
 from neu4mes.input import Input
 from neu4mes.model import Model
 
-class Sin(Relation):
+sin_relation_name = 'Sin'
+cos_relation_name = 'Cos'
+tan_relation_name = 'Tan'
+
+class Sin(Stream, ToStream):
     def __init__(self, obj):
-        self.name = ''
-        if type(obj) is tuple:
-            super().__init__(obj[0].json)
-            self.name = obj[0].name+'_sin'+str(NeuObj.count)
-            self.json['Relations'][self.name] = {
-                'Sin':[(obj[0].name,obj[1])],
-            }
-        elif (type(obj) is Input or
-              type(obj) is Relation or
-              issubclass(type(obj), Relation)):
-            super().__init__(obj.json)
-            self.name = obj.name+'_sin'+str(NeuObj.count)
-            self.json['Relations'][self.name] = {
-                'Sin':[obj.name]
-            }
+        super().__init__(sin_relation_name + str(Stream.count),obj.json,obj.dim)
+        if (type(obj) is Input or type(obj) is Stream):
+            self.json['Relations'][self.name] = [sin_relation_name, [obj.name]]
         else:
             raise Exception('Type is not supported!')
 
-
-
-class Cos(Relation):
+class Cos(Stream, ToStream):
     def __init__(self, obj):
-        self.name = ''
-        if type(obj) is tuple:
-            super().__init__(obj[0].json)
-            self.name = obj[0].name+'_cos'+str(NeuObj.count)
-            self.json['Relations'][self.name] = {
-                'Cos':[(obj[0].name,obj[1])],
-            }
-        elif (type(obj) is Input or
-              type(obj) is Relation or
-              issubclass(type(obj), Relation)):
-            super().__init__(obj.json)
-            self.name = obj.name+'_cos'+str(NeuObj.count)
-            self.json['Relations'][self.name] = {
-                'Cos':[obj.name]
-            }
+        super().__init__(cos_relation_name + str(Stream.count),obj.json,obj.dim)
+        if (type(obj) is Input or type(obj) is Stream):
+            self.json['Relations'][self.name] = [cos_relation_name, [obj.name]]
         else:
             raise Exception('Type is not supported!')
 
-
-
-class Tan(Relation):
+class Tan(Stream, ToStream):
     def __init__(self, obj):
-        self.name = ''
-        if type(obj) is tuple:
-            super().__init__(obj[0].json)
-            self.name = obj[0].name+'_tan'+str(NeuObj.count)
-            self.json['Relations'][self.name] = {
-                'Tan':[(obj[0].name,obj[1])],
-            }
-        elif (type(obj) is Input or
-              type(obj) is Relation or
-              issubclass(type(obj), Relation)):
-            super().__init__(obj.json)
-            self.name = obj.name+'_tan'+str(NeuObj.count)
-            self.json['Relations'][self.name] = {
-                'Tan':[obj.name]
-            }
+        super().__init__(tan_relation_name + str(Stream.count),obj.json,obj.dim)
+        if (type(obj) is Input or type(obj) is Stream):
+            self.json['Relations'][self.name] = [tan_relation_name, [obj.name]]
         else:
             raise Exception('Type is not supported!')
 
@@ -98,6 +62,6 @@ def createTan(self, *inputs):
     return Tan_Layer()
 
 
-setattr(Model, 'Sin', createSin)
-setattr(Model, 'Tan', createTan)
-setattr(Model, 'Cos', createCos)
+setattr(Model, sin_relation_name, createSin)
+setattr(Model, cos_relation_name, createCos)
+setattr(Model, tan_relation_name, createTan)

@@ -1,71 +1,38 @@
 import torch.nn as nn
 import torch
 
-from neu4mes.relation import Relation, merge, NeuObj
+from neu4mes.relation import ToStream, merge, NeuObj, Stream, Relation
 from neu4mes.model import Model
+from neu4mes.input import Input
 
-sum_relation_name = 'Sum'
-minus_relation_name = 'Minus'
-subtract_relation_name = 'Subtract'
+add_relation_name = 'Add'
+sub_relation_name = 'Sub'
+neg_relation_name = 'Neg'
 square_relation_name = 'Square'
 
-class Sum(Relation):
+class Add(Stream, ToStream):
     def __init__(self, obj1, obj2):
-        super().__init__(obj1.json)
-        self.json = merge(obj1.json,obj2.json)
-        self.name = obj1.name+'_sum'+str(NeuObj.count)
-        self.json['Relations'][self.name] = {sum_relation_name:[]}
-        if type(obj1) is Sum:
-            for el in self.json['Relations'][obj1.name]['Sum']:
-                self.json['Relations'][self.name][sum_relation_name].append(el)
-            self.json['Relations'][self.name][sum_relation_name].append(obj2.name)
-        elif type(obj2) is Sum:               
-            for el in self.json['Relations'][obj2.name]['Sum']:
-                self.json['Relations'][self.name][sum_relation_name].append(el)
-            self.json['Relations'][self.name][sum_relation_name].append(obj1.name)
-        else:
-            self.json['Relations'][self.name][sum_relation_name].append(obj1.name)
-            self.json['Relations'][self.name][sum_relation_name].append(obj2.name)
+        super().__init__(add_relation_name + str(Stream.count),merge(obj1.json,obj2.json),obj1.dim)
+        if ((type(obj1) is Input or type(obj1) is Stream) and
+                (type(obj2) is Input or type(obj2) is Stream)):
+            self.json['Relations'][self.name] = [add_relation_name,[obj1.name,obj2.name]]
 
-class Subtract(Relation):
+class Sub(Stream, ToStream):
     def __init__(self, obj1, obj2):
-        super().__init__(obj1.json)
-        self.json = merge(obj1.json,obj2.json)
-        self.name = obj1.name+'_sub'+str(NeuObj.count)
-        self.json['Relations'][self.name] = {sum_relation_name:[]}
-        if type(obj1) is Subtract:
-            for el in self.json['Relations'][obj1.name]['Sub']:
-                self.json['Relations'][self.name][sum_relation_name].append(el)
-            self.json['Relations'][self.name][sum_relation_name].append(obj2.name)
-        elif type(obj2) is Subtract:               
-            for el in self.json['Relations'][obj2.name]['Sub']:
-                self.json['Relations'][self.name][sum_relation_name].append(el)
-            self.json['Relations'][self.name][sum_relation_name].append(obj1.name)
-        else:
-            self.json['Relations'][self.name][sum_relation_name].append(obj1.name)
-            self.json['Relations'][self.name][sum_relation_name].append(obj2.name)
+        super().__init__(sub_relation_name + str(Stream.count),merge(obj1.json,obj2.json),obj1.dim)
+        if ((type(obj1) is Input or type(obj1) is Stream) and
+                (type(obj2) is Input or type(obj2) is Stream)):
+            self.json['Relations'][self.name] = [sub_relation_name,[obj1.name,obj2.name]]
 
-class Minus(Relation):
-    def __init__(self, obj = None):
-        if obj is None:
-            return
-        super().__init__(obj.json)
-        obj_name = obj.name
-        self.name = obj.name+'_minus'
-        self.json['Relations'][self.name] = {
-            minus_relation_name:[obj_name]
-        }
-
-class Square(Relation):
+class Neg(Stream, ToStream):
     def __init__(self, obj):
-        if obj is None:
-            return
-        super().__init__(obj.json)
-        obj_name = obj.name
-        self.name = obj.name+'_square'
-        self.json['Relations'][self.name] = {
-            square_relation_name:[obj_name]
-        }
+        super().__init__(neg_relation_name+str(Stream.count), obj.json, obj.dim)
+        self.json['Relations'][self.name] = [neg_relation_name,[obj.name]]
+
+class Square(NeuObj, Relation, ToStream):
+    def __init__(self, obj):
+        super().__init__(square_relation_name+str(Stream.count), obj.json, obj.dim)
+        self.json['Relations'][self.name] = [square_relation_name,[obj.name]]
 
 class Minus_Layer(nn.Module):
     def __init__(self):
@@ -96,7 +63,7 @@ class Diff_Layer(nn.Module):
     def __init__(self):
         super(Diff_Layer, self).__init__()
 
-    def forward(self, *inputs):
+    def forward(self, inputs):
         # Perform element-wise subtraction
         return torch.stack(inputs).diff(dim=0)
 
@@ -113,7 +80,7 @@ class Square_Layer(nn.Module):
 def createSquare(self, *inputs):
     return Square_Layer()
 
-setattr(Model, minus_relation_name, createMinus)
-setattr(Model, sum_relation_name, createSum)
-setattr(Model, subtract_relation_name, createSubtract)
+setattr(Model, neg_relation_name, createMinus)
+setattr(Model, add_relation_name, createSum)
+setattr(Model, sub_relation_name, createSubtract)
 setattr(Model, square_relation_name, createSquare)

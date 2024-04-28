@@ -1,6 +1,14 @@
 import unittest, logging
-from neu4mes import *
 
+import sys
+import os
+# append a new directory to sys.path
+sys.path.append(os.getcwd())
+from neu4mes import *
+from neu4mes.localmodel import LocalModel_Layer
+import torch
+
+'''
 class Neu4mesNetworkBuildingTest(unittest.TestCase):
     def test_network_building_simple(self):
         input1 = Input('in1')
@@ -191,3 +199,100 @@ class Neu4mesNetworkBuildingTest(unittest.TestCase):
         weights = test_layer.get_weights()
 
         self.assertEqual([[0.0]],test_layer.predict(in1).tolist())
+'''
+
+class Neu4mesNetworkBuildingTest(unittest.TestCase):
+    def test_network_building_simple(self):
+        print('start')
+        input1 = Input('in1')
+        input2 = Input('in2')
+        output = Input('out')
+        rel1 = Linear(input1.tw(0.05))
+        rel2 = Linear(input1.tw(0.01))
+        fun = Output(output.z(-1),rel1+rel2)
+
+        test = Neu4mes()
+        test.addModel(fun)
+        test.neuralizeModel(0.01)
+
+        self.assertEqual(test.max_n_samples, 5) # 5 samples
+        self.assertEqual({'in1': 5} , test.input_n_samples)
+        
+        print(test.model)
+        #self.assertEqual([None,5] ,list(test.inputs_for_model['in1'].shape))
+        #self.assertEqual([None,None,5] ,list(test.rnn_inputs_for_model['in1'].shape))
+
+    def test_network_building_discrete_input_and_local_model(self):
+        in1 = Input('in1', values=[2,3,4])
+        in2 = Input('in2')
+        rel = LocalModel(in2.tw(1), in1)
+        fun = Output(in2.z(-1),rel)
+
+        test = Neu4mes()
+        test.addModel(fun)
+        test.neuralizeModel(0.5)
+
+        self.assertEqual([1.,0.,0.],torch.nn.functional.one_hot(torch.tensor(2) - min([2,3,4]), num_classes=3).squeeze().to(torch.float32).tolist())
+        self.assertEqual([0.,1.,0.],torch.nn.functional.one_hot(torch.tensor(3) - min([2,3,4]), num_classes=3).squeeze().to(torch.float32).tolist())
+        self.assertEqual([0.,0.,1.],torch.nn.functional.one_hot(torch.tensor(4) - min([2,3,4]), num_classes=3).squeeze().to(torch.float32).tolist())
+
+        test_layer = LocalModel_Layer(input_size=2, classes=[2,3,4])
+        #print(test_layer)
+        weights = test_layer.linear.weight
+        #print('weights: ', weights)
+        #print('weights.shape: ',weights.shape)
+        #self.assertEqual((2, 3),weights.shape)
+        #print(test_layer([torch.tensor([[0,1]] ,dtype=torch.float32),torch.tensor([[3]], dtype=torch.float32)]))
+        self.assertEqual(weights[0][1].item(),test_layer([torch.tensor([[0,1]] ,dtype=torch.float32),torch.tensor([[2]], dtype=torch.float32)]).item())
+        self.assertEqual(weights[1][1].item(),test_layer([torch.tensor([[0,1]] ,dtype=torch.float32),torch.tensor([[3]], dtype=torch.float32)]).item())
+        self.assertEqual(weights[2][1].item(),test_layer([torch.tensor([[0,1]] ,dtype=torch.float32),torch.tensor([[4]], dtype=torch.float32)]).item())
+        self.assertEqual(weights[0][0].item(),test_layer([torch.tensor([[1,0]] ,dtype=torch.float32),torch.tensor([[2]], dtype=torch.float32)]).item())
+        self.assertEqual(weights[1][0].item(),test_layer([torch.tensor([[1,0]] ,dtype=torch.float32),torch.tensor([[3]], dtype=torch.float32)]).item())
+        self.assertEqual(weights[2][0].item(),test_layer([torch.tensor([[1,0]] ,dtype=torch.float32),torch.tensor([[4]], dtype=torch.float32)]).item())
+
+    def test_network_building_complex1(self):
+        input1 = Input('in1')
+        input2 = Input('in2')
+        output = Input('out')
+        rel1 = Linear(input1.tw(0.05))
+        rel2 = Linear(input1.tw(0.01))
+        rel3 = Linear(input2.tw(0.05))
+        rel4 = Linear(input2.tw([0.02,-0.02]))
+        fun = Output(output.z(-1),rel1+rel2+rel3+rel4)
+
+        test = Neu4mes()
+        test.addModel(fun)
+        test.neuralizeModel(0.01)
+
+        self.assertEqual(test.max_n_samples, 7) # 5 samples + 2 samples of the horizon
+        self.assertEqual({'in1': 5, 'in2': 7} , test.input_n_samples)
+        
+        #self.assertEqual([None,5] ,list(test.inputs_for_model['in1'].shape))
+        #self.assertEqual([None,7] ,list(test.inputs_for_model['in2'].shape))
+        #self.assertEqual([None,None,5] ,list(test.rnn_inputs_for_model['in1'].shape))
+        #self.assertEqual([None,None,7] ,list(test.rnn_inputs_for_model['in2'].shape))
+        #self.assertEqual([None,5] ,list(test.inputs['in1'].shape))
+        #self.assertEqual([None,7] ,list(test.inputs['in2'].shape))    
+        #self.assertEqual([None,5] ,list(test.inputs[('in1',5)].shape))
+        #self.assertEqual([None,1] ,list(test.inputs[('in1',1)].shape))
+        #self.assertEqual([None,5] ,list(test.inputs[('in2',5)].shape))
+        #self.assertEqual([None,4] ,list(test.inputs[('in2',(2,2))].shape))
+
+        in1 = [[0,1,2,3,4]]
+        test_layer = torch.nn.Linear(in_features=5, out_features=5, bias=False)
+        #test_layer = Model(inputs=test.inputs_for_model['in1'], outputs=test.inputs[('in1',5)])
+        #self.assertEqual([[0,1,2,3,4]],test_layer.predict(in1).tolist())
+        self.assertEqual(torch.tensor([[0,1,2,3,4]]).shape,test_layer(torch.tensor(in1 ,dtype=torch.float32)).shape)
+
+        #test_layer = Model(inputs=test.inputs_for_model['in1'], outputs=test.inputs[('in1',1)])
+        #self.assertEqual([[4]],test_layer.predict(in1).tolist())
+
+        #in2 = [[0,1,2,3,4,5,6]]
+        #test_layer = Model(inputs=test.inputs_for_model['in2'], outputs=test.inputs[('in2',5)])
+        #self.assertEqual([[0,1,2,3,4]],test_layer.predict(in2).tolist())
+
+        #test_layer = Model(inputs=test.inputs_for_model['in2'], outputs=test.inputs[('in2',(2,2))])
+        #self.assertEqual([[3,4,5,6]],test_layer.predict(in2).tolist())
+
+if __name__ == '__main__':
+    unittest.main()

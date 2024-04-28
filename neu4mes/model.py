@@ -2,59 +2,96 @@ import copy
 import torch.nn as nn
 
 class Model(nn.Module):
-    def __init__(self, inputs, outputs, relations, n_samples):
+    def __init__(self, model_def, relation_samples):
         super(Model, self).__init__()
-        self.inputs = inputs
-        self.outputs = outputs
-        self.relations = relations
-        self.n_samples = copy.deepcopy(n_samples)
+        self.inputs = model_def['Inputs']
+        self.outputs = model_def['Outputs']
+        self.relations = model_def['Relations']
+        self.params = model_def['Parameters']
+        self.sample_time = model_def['SampleTime']
+        self.samples = relation_samples
 
         ## Build the network
         self.relation_forward = {}
         self.relation_inputs = {}
-        ## Cycle through all the relations
-        for output, relation in self.relations.items():
-            ## Cycle through all the variables needed for the relation
-            for rel, var in relation.items(): 
-                func = getattr(self,rel) ## Get the relation attribute
-                if func:
-                    # Create the Relation
-                    input_var = []
-                    for item in var:
-                        if type(item) is tuple:
-                            input_var.append(item[0])
+        for relation, inputs in self.relations.items():
+            rel_name = inputs[0]
+            func = getattr(self,rel_name)
+            if func:
+                ## collect the inputs needed for the relation
+                input_var = [i[0] if type(i) is tuple else i for i in inputs[1]]
+                #print('[LOG]: relation: ', relation)
+                #print('[LOG] func: ', func)
+                #print('[LOG] input_var: ', input_var)
+
+                if rel_name == 'LocalModel': # TODO: Work in progress
+                    pass
+                    #self.relation_forward[relation] = func(self.n_samples[input_var[0]], len(self.inputs[input_var[1]]['Discrete']))
+                    #self.n_samples[relation] = len(self.inputs[input_var[1]]['Discrete'])
+
+                elif rel_name == 'Fir':  ## Linear module requires 2 inputs: input_size and output_size
+                    if set(['dim_in', 'dim_out']).issubset(self.params[inputs[2]].keys()):
+                        self.relation_forward[relation] = func(self.params[inputs[2]]['dim_in'], self.params[inputs[2]]['dim_out'])
+                    elif 'tw_in' in self.params[inputs[2]].keys():
+                        if type(self.params[inputs[2]]['tw_in']) is list:  ## Backward + forward
+                            dim_in = int(abs(self.params[inputs[2]]['tw_in'][0]) / self.sample_time) + int(abs(self.params[inputs[2]]['tw_in'][1]) / self.sample_time)
                         else:
-                            input_var.append(item)
-                    if rel == 'LocalModel':  ## Needs two inputs: dimension of the filter and the number of discrete variables
-                        self.relation_forward[output] = func(self.n_samples[input_var[0]], len(self.inputs[input_var[1]]['Discrete']))
-                        self.n_samples[output] = len(self.inputs[input_var[1]]['Discrete'])
-                    elif rel == 'Linear' or rel == 'LinearBias': ## Needs one input: dimension of the input
-                        self.relation_forward[output] = func(self.n_samples[input_var[0]])
-                        self.n_samples[output] = 1
-                    else: ## No inputs needed
-                        self.relation_forward[output] = func()
-                        self.n_samples[output] = self.n_samples[input_var[0]]
+                            dim_in =  int(self.params[inputs[2]]['tw_in'] / self.sample_time)
+                        self.relation_forward[relation] = func(dim_in, self.params[inputs[2]]['dim_out'])
+                    elif 'tw_out' in self.params[inputs[2]].keys():
+                        if type(self.params[inputs[2]]['tw_out']) is list:  ## Backward + forward
+                            dim_out = int(abs(self.params[inputs[2]]['tw_out'][0]) / self.sample_time) + int(abs(self.params[inputs[2]]['tw_out'][1]) / self.sample_time)
+                        else:
+                            dim_out =  int(self.params[inputs[2]]['tw_out'] / self.sample_time)
+                        self.relation_forward[relation] = func(self.params[inputs[2]]['dim_in'], dim_out)
 
-                    ## Save the list of inputs needed to obtain the relation
-                    self.relation_inputs[output] = input_var
-                else:
-                    print("Relation not defined")
-
-        ## Use the parameterDict in order to have a gradient for the optimizer
+                else: ## Functions that takes no parameters
+                    self.relation_forward[relation] = func()
+                self.relation_inputs[relation] = input_var       
+            else:
+                print("Relation not defined")
         self.params = nn.ParameterDict(self.relation_forward)
 
+        print('[LOG] relation forward: ', self.relation_forward)
+        print('[LOG] relation inputs: ', self.relation_inputs)
+    
     def forward(self, kwargs):
         available_inputs = kwargs
+        #print('[LOG] available_inputs: ', available_inputs)
         while not set(self.outputs.keys()).issubset(available_inputs.keys()):
             for output in self.relations.keys():
                 ## if i have all the variables i can calculate the relation
                 if (output not in available_inputs.keys()) and (set(self.relation_inputs[output]).issubset(available_inputs.keys())):
-                    layer_inputs = [available_inputs[key] for key in self.relation_inputs[output]]
+                    layer_inputs = [available_inputs[key][:,self.samples[output][key]['backward']:self.samples[output][key]['forward']] for key in self.relation_inputs[output]]
+                    #print('[LOG] output: ', output)
+                    #print('[LOG] layer inputs: ', layer_inputs)
+                    #print('[LOG] relation_forward[output]: ', self.relation_forward[output])
                     if len(layer_inputs) <= 1: ## i have a single forward pass
                         available_inputs[output] = self.relation_forward[output](layer_inputs[0])
+                        #print('[LOG] available_inputs[output]: ', available_inputs[output])
                     else:
                         available_inputs[output] = self.relation_forward[output](layer_inputs)
 
         ## Return a dictionary with all the outputs final values
         result_dict = {key: available_inputs[key] for key in self.outputs.keys()}
         return result_dict
+    
+    '''
+    def forward(self, kwargs):
+        #available_inputs = kwargs
+        available_inputs = {}
+        input_keys = list(self.inputs.keys())
+        for key in input_keys:
+            available_inputs[key] = kwargs[key]
+        while not set(self.outputs.keys()).issubset(input_keys):
+            for output in self.relations.keys():
+                ## if i have all the variables i can calculate the relation
+                if (output not in input_keys) and (set(self.relation_inputs[output]).issubset(input_keys)):
+                    layer_inputs = [available_inputs[key] for key in self.relation_inputs[output]]
+                    if len(layer_inputs) <= 1: ## i have a single forward pass
+                        available_inputs[output] = self.relation_forward[output](layer_inputs[0])
+                        input_keys.append(output)
+                    else:
+                        available_inputs[output] = self.relation_forward[output](layer_inputs)
+                        input_keys.append(output)
+    '''

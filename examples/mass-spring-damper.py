@@ -9,7 +9,7 @@ from neu4mes.visualizer import StandardVisualizer
 # Create neural model
 x = Input('x')
 F = Input('F')
-x_z = Output(x.z(-1), Linear(x.tw(2))+Linear(F))
+x_z = Output(x.z(-1), Fir(x.tw(2))+Fir(F))
 
 # Add the neural model to the neu4mes structure and neuralization of the model
 mass_spring_damper = Neu4mes(verbose = True,  visualizer = StandardVisualizer())

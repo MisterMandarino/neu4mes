@@ -22,13 +22,13 @@ class LocalModel(Relation):
 
 class LocalModel_Layer(nn.Module):
     ## TODO: check if the gradient is propagated only for the active variable
-    def __init__(self, input_size, output_size):
+    def __init__(self, input_size, classes):
         super(LocalModel_Layer, self).__init__()
-        self.linear = nn.Linear(in_features=input_size, out_features=output_size, bias=False)
-        self.classes = output_size
+        self.linear = nn.Linear(in_features=input_size, out_features=len(classes), bias=False)
+        self.classes = classes
     def forward(self, args):
         linear_out = self.linear(args[0])
-        one_hot = torch.nn.functional.one_hot(args[1].to(torch.int64), num_classes=self.classes).squeeze().to(torch.float32)
+        one_hot = torch.nn.functional.one_hot(args[1].to(torch.int64) - min(self.classes), num_classes=len(self.classes)).squeeze().to(torch.float32)
         out = torch.mul(linear_out, one_hot)
         if len(out.shape) == 1:
             out = torch.sum(out, dim=0, keepdim=True)
