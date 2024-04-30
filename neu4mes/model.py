@@ -20,9 +20,6 @@ class Model(nn.Module):
             if func:
                 ## collect the inputs needed for the relation
                 input_var = [i[0] if type(i) is tuple else i for i in inputs[1]]
-                #print('[LOG]: relation: ', relation)
-                #print('[LOG] func: ', func)
-                #print('[LOG] input_var: ', input_var)
 
                 if rel_name == 'LocalModel': # TODO: Work in progress
                     pass
@@ -52,23 +49,18 @@ class Model(nn.Module):
                 print("Relation not defined")
         self.params = nn.ParameterDict(self.relation_forward)
 
-        print('[LOG] relation forward: ', self.relation_forward)
-        print('[LOG] relation inputs: ', self.relation_inputs)
+        #print('[LOG] relation forward: ', self.relation_forward)
+        #print('[LOG] relation inputs: ', self.relation_inputs)
     
     def forward(self, kwargs):
         available_inputs = kwargs
-        #print('[LOG] available_inputs: ', available_inputs)
         while not set(self.outputs.keys()).issubset(available_inputs.keys()):
             for output in self.relations.keys():
                 ## if i have all the variables i can calculate the relation
                 if (output not in available_inputs.keys()) and (set(self.relation_inputs[output]).issubset(available_inputs.keys())):
                     layer_inputs = [available_inputs[key][:,self.samples[output][key]['backward']:self.samples[output][key]['forward']] for key in self.relation_inputs[output]]
-                    #print('[LOG] output: ', output)
-                    #print('[LOG] layer inputs: ', layer_inputs)
-                    #print('[LOG] relation_forward[output]: ', self.relation_forward[output])
                     if len(layer_inputs) <= 1: ## i have a single forward pass
                         available_inputs[output] = self.relation_forward[output](layer_inputs[0])
-                        #print('[LOG] available_inputs[output]: ', available_inputs[output])
                     else:
                         available_inputs[output] = self.relation_forward[output](layer_inputs)
 

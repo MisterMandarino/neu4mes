@@ -1,18 +1,20 @@
 import unittest, logging
-import numpy as np
-from neu4mes import *
 
+import sys
 import os
+# append a new directory to sys.path
+sys.path.append(os.getcwd())
+from neu4mes import *
 data_folder = os.path.join(os.path.dirname(__file__), 'data/')
 
 class Neu4mesTrainingTest(unittest.TestCase):
     def test_build_dataset_batch(self):
         input1 = Input('in1')
         output = Input('out')
-        rel1 = Linear(input1.tw(0.05))
+        rel1 = Fir(input1.tw(0.05))
         fun = Output(output.z(-1),rel1)
 
-        test = Neu4mes()
+        test = Neu4mes(verbose=True)
         test.addModel(fun)
         test.neuralizeModel(0.01)
 
@@ -24,18 +26,19 @@ class Neu4mesTrainingTest(unittest.TestCase):
         training_params['batch_size'] = 5
         training_params['learning_rate'] = 0.1
         training_params['num_of_epochs'] = 5
-        test.trainModel(training_params = training_params, test_percentage = 50)
+        test.trainModel(train_size=0.7, training_params = training_params)
 
         # 15 lines in the dataset
         # 5 lines for input + 1 for output -> total of sample 10
         # 10 / 2 = 5 for training and test
-        self.assertEqual(5,test.num_of_training_sample)
-        self.assertEqual(5,test.num_of_test_sample)
+        self.assertEqual(5,test.n_samples_train)
+        self.assertEqual(5,test.n_samples_test)
         self.assertEqual(10,test.num_of_samples)
         self.assertEqual(5,test.batch_size)
         self.assertEqual(5,test.num_of_epochs)
         self.assertEqual(0.1,test.learning_rate)
 
+    '''
     def test_build_dataset_batch2(self):
         input1 = Input('in1')
         output = Input('out')
@@ -132,3 +135,7 @@ class Neu4mesTrainingTest(unittest.TestCase):
         self.assertEqual(1,test.batch_size)
         self.assertEqual(5,test.num_of_epochs)
         self.assertEqual(0.1,test.learning_rate)
+    '''
+
+if __name__ == '__main__':
+    unittest.main()

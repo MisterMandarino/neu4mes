@@ -68,6 +68,8 @@ class Neu4mes:
         self.rnn_inout_asarray = {}         # dict for RNN network input in asarray format
         self.num_of_samples = None          # number of rows of the file
         self.num_of_training_sample = 0     # number of rows for training
+        self.n_samples_train = None
+        self.n_samples_test = None
 
         self.idx_of_rows = [0]              # Index identifying each file start
         self.first_idx_test = 0             # Index identifying the first test
@@ -110,7 +112,7 @@ class Neu4mes:
             self.model_def = merge(self.model_def, model_def.json)
         elif type(model_def) is dict:
             self.model_def = merge(self.model_def, model_def)
-        self.MP(pprint,self.model_def)
+        #self.MP(pprint,self.model_def)
 
     """
     Definition of the network structure through the dependency graph and sampling time.
@@ -131,39 +133,39 @@ class Neu4mes:
 
         # Set the maximum time window for each input
         for name, params in self.model_def['Relations'].items():
-            if name not in self.model_def['Outputs'].keys():
-                relation_params = params[1]
-                for rel in relation_params:
-                    if type(rel) is tuple:
-                        if rel[0] in self.model_def['Inputs'].keys():
-                            tw = rel[1]
-                            if type(tw) is list: ## backward + forward
-                                if rel[0] in self.input_tw_backward.keys(): ## Update if grater
-                                    self.input_tw_backward[rel[0]] = max(abs(tw[0]), self.input_tw_backward[rel[0]])
-                                    self.input_tw_forward[rel[0]] = max(tw[1], self.input_tw_forward[rel[0]])
-                                else:
-                                    self.input_tw_backward[rel[0]] = abs(tw[0])
-                                    self.input_tw_forward[rel[0]] = tw[1]
-                            else: ## Only backward
-                                if rel[0] in self.input_tw_backward.keys(): ## Update if grater
-                                    self.input_tw_backward[rel[0]] = max(tw, self.input_tw_backward[rel[0]])
-                                    self.input_tw_forward[rel[0]] = max(0, self.input_tw_forward[rel[0]])
-                                else:
-                                    self.input_tw_backward[rel[0]] = tw
-                                    self.input_tw_forward[rel[0]] = 0
+            #if name not in self.model_def['Outputs'].keys():
+            relation_params = params[1]
+            for rel in relation_params:
+                if type(rel) is tuple:
+                    if rel[0] in self.model_def['Inputs'].keys():
+                        tw = rel[1]
+                        if type(tw) is list: ## backward + forward
+                            if rel[0] in self.input_tw_backward.keys(): ## Update if grater
+                                self.input_tw_backward[rel[0]] = max(abs(tw[0]), self.input_tw_backward[rel[0]])
+                                self.input_tw_forward[rel[0]] = max(tw[1], self.input_tw_forward[rel[0]])
+                            else:
+                                self.input_tw_backward[rel[0]] = abs(tw[0])
+                                self.input_tw_forward[rel[0]] = tw[1]
+                        else: ## Only backward
+                            if rel[0] in self.input_tw_backward.keys(): ## Update if grater
+                                self.input_tw_backward[rel[0]] = max(tw, self.input_tw_backward[rel[0]])
+                                self.input_tw_forward[rel[0]] = max(0, self.input_tw_forward[rel[0]])
+                            else:
+                                self.input_tw_backward[rel[0]] = tw
+                                self.input_tw_forward[rel[0]] = 0
 
-                            self.input_ns_backward[rel[0]] = int(self.input_tw_backward[rel[0]] / self.model_def['SampleTime'])
-                            self.input_ns_forward[rel[0]] = int(self.input_tw_forward[rel[0]] / self.model_def['SampleTime'])
-                            self.input_n_samples[rel[0]] = self.input_ns_backward[rel[0]] + self.input_ns_forward[rel[0]]
-                    else:
-                        if rel in self.model_def['Inputs'].keys(): ## instantaneous input
-                            if rel not in self.input_tw_backward.keys():
-                                self.input_tw_backward[rel] = self.model_def['SampleTime']
-                                self.input_tw_forward[rel] = 0
+                        self.input_ns_backward[rel[0]] = int(self.input_tw_backward[rel[0]] / self.model_def['SampleTime'])
+                        self.input_ns_forward[rel[0]] = int(self.input_tw_forward[rel[0]] / self.model_def['SampleTime'])
+                        self.input_n_samples[rel[0]] = self.input_ns_backward[rel[0]] + self.input_ns_forward[rel[0]]
+                else:
+                    if rel in self.model_def['Inputs'].keys(): ## instantaneous input
+                        if rel not in self.input_tw_backward.keys():
+                            self.input_tw_backward[rel] = self.model_def['SampleTime']
+                            self.input_tw_forward[rel] = 0
 
-                                self.input_ns_backward[rel] = 1
-                                self.input_ns_forward[rel] = 0
-                                self.input_n_samples[rel] = self.input_ns_backward[rel] + self.input_ns_forward[rel]
+                            self.input_ns_backward[rel] = 1
+                            self.input_ns_forward[rel] = 0
+                            self.input_n_samples[rel] = self.input_ns_backward[rel] + self.input_ns_forward[rel]
 
         self.max_samples_backward = max(self.input_ns_backward.values())
         self.max_samples_forward = max(self.input_ns_forward.values())
@@ -202,8 +204,7 @@ class Neu4mes:
 
         ## Build the network
         self.model = Model(self.model_def, self.relation_samples)
-        print(self.model)
-
+        self.MP(pprint,self.model)
     """
     Loading of the data set files and generate the structure for the training considering the structure of the input and the output
     :param format: it is a list of the variable in the csv. All the input keys must be inside this list.
@@ -290,7 +291,7 @@ class Neu4mes:
     """
     Analysis of the results
     """
-    def resultAnalysis(self, train_loss, test_loss, x_test, y_test, n_samples):
+    def resultAnalysis(self, train_loss, test_loss, x_test, y_test):
         ## Plot train loss and test loss
         plt.plot(train_loss, label='train loss')
         plt.plot(test_loss, label='test loss')
@@ -299,7 +300,7 @@ class Neu4mes:
 
         # List of keys
         output_keys = list(self.model_def['Outputs'].keys())
-        number_of_samples = int(n_samples*self.batch_size - self.batch_size) 
+        number_of_samples = int(self.n_samples_test*self.batch_size - self.batch_size) 
 
         # Performance parameters
         self.performance['se'] = np.empty([len(output_keys),number_of_samples])
@@ -360,7 +361,6 @@ class Neu4mes:
         ## Split train and test
         X_train, Y_train = {}, {}
         X_test, Y_test = {}, {}
-        n_samples_train, n_samples_test = None, None
         for key,data in self.inout_data_time_window.items():
             if data:
                 samples = np.asarray(data)
@@ -370,10 +370,10 @@ class Neu4mes:
                 if key in self.model_def['Inputs'].keys():
                     X_train[key] = samples[:int(len(samples)*train_size)]
                     X_test[key] = samples[int(len(samples)*train_size):]
-                    if n_samples_train is None:
-                        n_samples_train = round(len(X_train[key]) / self.batch_size)
-                    if n_samples_test is None:
-                        n_samples_test = round(len(X_test[key]) / self.batch_size)
+                    if self.n_samples_train is None:
+                        self.n_samples_train = round(len(X_train[key]) / self.batch_size)
+                    if self.n_samples_test is None:
+                        self.n_samples_test = round(len(X_test[key]) / self.batch_size)
                 elif key in self.model_def['Outputs'].keys():
                     Y_train[key] = samples[:int(len(samples)*train_size)]
                     Y_test[key] = samples[int(len(samples)*train_size):]
@@ -394,7 +394,7 @@ class Neu4mes:
         for iter in range(self.num_of_epochs):
             self.model.train()
             train_loss = []
-            for i in range(n_samples_train):
+            for i in range(self.n_samples_train):
 
                 idx = i*self.batch_size
                 X, Y = {}, {}
@@ -415,7 +415,7 @@ class Neu4mes:
 
             self.model.eval()
             test_loss = []
-            for i in range(n_samples_test):
+            for i in range(self.n_samples_test):
 
                 idx = i*self.batch_size
                 X, Y = {}, {}
@@ -439,4 +439,4 @@ class Neu4mes:
 
         # Show the analysis of the Result
         if show_results:
-            self.resultAnalysis(train_losses, test_losses, X_test, Y_test, n_samples_test)
+            self.resultAnalysis(train_losses, test_losses, X_test, Y_test, self.n_samples_test)
