@@ -275,13 +275,20 @@ class Neu4mes:
         # Build the asarray for numpy
         for key,data in self.inout_data_time_window.items():
             self.inout_asarray[key]  = np.asarray(data)
+            if data and self.num_of_samples is None:
+                self.num_of_samples = len(self.inout_asarray[key])
 
     #
     # Function that get specific parameters for training
     #
-    def __getTrainParams(self, training_params):
+    def __getTrainParams(self, training_params, test_size):
         if bool(training_params):
-            self.batch_size = (training_params['batch_size'] if 'batch_size' in training_params else self.batch_size)
+            if 'batch_size' in training_params:
+                if training_params['batch_size'] > round(self.num_of_samples*test_size):
+                    self.batch_size = 1
+                else:
+                    self.batch_size = training_params['batch_size']
+            #self.batch_size = (training_params['batch_size'] if 'batch_size' in training_params else self.batch_size)
             self.learning_rate = (training_params['learning_rate'] if 'learning_rate' in training_params else self.learning_rate)
             self.num_of_epochs = (training_params['num_of_epochs'] if 'num_of_epochs' in training_params else self.num_of_epochs)
             self.rnn_batch_size = (training_params['rnn_batch_size'] if 'rnn_batch_size' in training_params else self.rnn_batch_size)
@@ -356,7 +363,8 @@ class Neu4mes:
     def trainModel(self, train_size=0.7, training_params = {}, show_results = False):
 
         # Check input
-        self.__getTrainParams(training_params)
+        test_size = 1 - train_size
+        self.__getTrainParams(training_params, test_size=test_size)
 
         ## Split train and test
         X_train, Y_train = {}, {}
