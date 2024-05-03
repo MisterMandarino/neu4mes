@@ -14,7 +14,7 @@ class Neu4mesCreateDatasetTest(unittest.TestCase):
     def test_build_dataset_simple(self):
         input = Input('in')
         output = Input('out')
-        relation = Linear(input.tw(0.05))
+        relation = Fir(input.tw(0.05))
         fun = Output(output.z(-1),relation)
 
         test = Neu4mes()
@@ -41,8 +41,8 @@ class Neu4mesCreateDatasetTest(unittest.TestCase):
     def test_build_dataset_medium1(self):
         input = Input('in')
         output = Input('out')
-        rel1 = Linear(input.tw(0.05))
-        rel2 = Linear(input.tw(0.01))
+        rel1 = Fir(input.tw(0.05))
+        rel2 = Fir(input.tw(0.01))
         fun = Output(output.z(-1),rel1+rel2)
 
         test = Neu4mes()
@@ -70,9 +70,9 @@ class Neu4mesCreateDatasetTest(unittest.TestCase):
         input1 = Input('in1')
         input2 = Input('in2')
         output = Input('out')
-        rel1 = Linear(input1.tw(0.05))
-        rel2 = Linear(input1.tw(0.01))
-        rel3 = Linear(input2.tw(0.02))
+        rel1 = Fir(input1.tw(0.05))
+        rel2 = Fir(input1.tw(0.01))
+        rel3 = Fir(input2.tw(0.02))
         fun = Output(output.z(-1),rel1+rel2+rel3)
 
         test = Neu4mes()
@@ -111,11 +111,11 @@ class Neu4mesCreateDatasetTest(unittest.TestCase):
     def test_build_dataset_complex1(self):
         input1 = Input('in1')
         output = Input('out')
-        rel1 = Linear(input1.tw(0.05))
-        rel2 = Linear(input1.tw([0.01,-0.02]))
+        rel1 = Fir(input1.tw(0.05))
+        rel2 = Fir(input1.tw([-0.01,0.02]))
         fun = Output(output.z(-1),rel1+rel2)
 
-        test = Neu4mes()
+        test = Neu4mes(verbose=True)
         test.addModel(fun)
         test.neuralizeModel(0.01)
 
@@ -138,8 +138,8 @@ class Neu4mesCreateDatasetTest(unittest.TestCase):
     def test_build_dataset_complex2(self):
         input1 = Input('in1')
         output = Input('out')
-        rel1 = Linear(input1.tw(0.05))
-        rel2 = Linear(input1.tw([0.01,-0.01]))
+        rel1 = Fir(input1.tw(0.05))
+        rel2 = Fir(input1.tw([-0.01,0.01]))
         fun = Output(output.z(-1),rel1+rel2)
 
         test = Neu4mes()
@@ -167,10 +167,10 @@ class Neu4mesCreateDatasetTest(unittest.TestCase):
         input1 = Input('in1')
         input2 = Input('in2')
         output = Input('out')
-        rel1 = Linear(input1.tw(0.05))
-        rel2 = Linear(input2.tw(0.02))
-        rel3 = Linear(input1.tw([0.01,-0.01]))
-        rel4 = Linear(input2)
+        rel1 = Fir(input1.tw(0.05))
+        rel2 = Fir(input2.tw(0.02))
+        rel3 = Fir(input1.tw([-0.01,0.01]))
+        rel4 = Fir(input2)
         fun = Output(output.z(-1),rel1+rel2+rel3+rel4)
 
         test = Neu4mes()
@@ -209,9 +209,9 @@ class Neu4mesCreateDatasetTest(unittest.TestCase):
     def test_build_dataset_complex5(self):
         input1 = Input('in1')
         output = Input('out')
-        rel1 = Linear(input1.tw(0.05))
-        rel2 = Linear(input1.tw([0.01,-0.01]))
-        rel3 = Linear(input1.tw([0.02,-0.02]))
+        rel1 = Fir(input1.tw(0.05))
+        rel2 = Fir(input1.tw([-0.01,0.01]))
+        rel3 = Fir(input1.tw([-0.02,0.02]))
         fun = Output(output.z(-1),rel1+rel2+rel3)
 
         test = Neu4mes()
@@ -237,9 +237,9 @@ class Neu4mesCreateDatasetTest(unittest.TestCase):
     def test_build_dataset_complex6(self):
         input1 = Input('in1')
         output = Input('out')
-        rel1 = Linear(input1.tw(0.05))
-        rel2 = Linear(input1.tw([0.01,-0.02]))
-        rel3 = Linear(input1.tw([0.05,-0.01]))
+        rel1 = Fir(input1.tw(0.05))
+        rel2 = Fir(input1.tw([-0.01,0.02]))
+        rel3 = Fir(input1.tw([-0.05,0.01]))
         fun = Output(output.z(-1),rel1+rel2+rel3)
 
         test = Neu4mes()

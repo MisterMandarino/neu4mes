@@ -140,6 +140,7 @@ class Neu4mes:
                     if rel[0] in self.model_def['Inputs'].keys():
                         tw = rel[1]
                         if type(tw) is list: ## backward + forward
+                            assert tw[0] >= tw[1], 'The first element of a time window must be less that the second (Ex: [-2, 2])'
                             if rel[0] in self.input_tw_backward.keys(): ## Update if grater
                                 self.input_tw_backward[rel[0]] = max(abs(tw[0]), self.input_tw_backward[rel[0]])
                                 self.input_tw_forward[rel[0]] = max(tw[1], self.input_tw_forward[rel[0]])
@@ -147,6 +148,7 @@ class Neu4mes:
                                 self.input_tw_backward[rel[0]] = abs(tw[0])
                                 self.input_tw_forward[rel[0]] = tw[1]
                         else: ## Only backward
+
                             if rel[0] in self.input_tw_backward.keys(): ## Update if grater
                                 self.input_tw_backward[rel[0]] = max(tw, self.input_tw_backward[rel[0]])
                                 self.input_tw_forward[rel[0]] = max(0, self.input_tw_forward[rel[0]])
@@ -447,4 +449,4 @@ class Neu4mes:
 
         # Show the analysis of the Result
         if show_results:
-            self.resultAnalysis(train_losses, test_losses, X_test, Y_test, self.n_samples_test)
+            self.resultAnalysis(train_losses, test_losses, X_test, Y_test)

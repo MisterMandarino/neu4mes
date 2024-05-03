@@ -10,6 +10,8 @@ from neu4mes.visualizer import StandardVisualizer
 x = Input('x')
 F = Input('F')
 x_z = Output(x.z(-1), Fir(x.tw(2))+Fir(F))
+#x_z = Minimize(x.z(-1), Fir(x.tw(2))+Fir(F), loss='mse')
+#x_z = Minimize(Fir(x.tw(1)), Fir(y.tw(2))+Fir(F), loss='mse')
 
 # Add the neural model to the neu4mes structure and neuralization of the model
 mass_spring_damper = Neu4mes(verbose = True,  visualizer = StandardVisualizer())

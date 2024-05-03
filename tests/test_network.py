@@ -117,10 +117,10 @@ class Neu4mesNetworkBuildingTest(unittest.TestCase):
     def test_network_building_tw_with_offest(self):
         input2 = Input('in2')
         output = Input('out')
-        rel3 = Linear(input2.tw(0.05))
-        rel4 = Linear(input2.tw([0.04,-0.02]))
-        rel5 = Linear(input2.tw([0.04,-0.02],offset=0))
-        rel6 = Linear(input2.tw([0.04,-0.02],offset=-0.02))
+        rel3 = Fir(input2.tw(0.05))
+        rel4 = Fir(input2.tw([0.04,-0.02]))
+        rel5 = Fir(input2.tw([0.04,-0.02],offset=0))
+        rel6 = Fir(input2.tw([0.04,-0.02],offset=-0.02))
         fun = Output(output.z(-1),rel3+rel4+rel5+rel6)
 
         test = Neu4mes()

@@ -14,8 +14,14 @@ class Model(nn.Module):
         ## Build the network
         self.relation_forward = {}
         self.relation_inputs = {}
+
         for relation, inputs in self.relations.items():
             rel_name = inputs[0]
+
+            ## Check shared model
+            
+
+
             func = getattr(self,rel_name)
             if func:
                 ## collect the inputs needed for the relation
@@ -25,7 +31,6 @@ class Model(nn.Module):
                     pass
                     #self.relation_forward[relation] = func(self.n_samples[input_var[0]], len(self.inputs[input_var[1]]['Discrete']))
                     #self.n_samples[relation] = len(self.inputs[input_var[1]]['Discrete'])
-
                 elif rel_name == 'Fir':  ## Linear module requires 2 inputs: input_size and output_size
                     if set(['dim_in', 'dim_out']).issubset(self.params[inputs[2]].keys()):
                         self.relation_forward[relation] = func(self.params[inputs[2]]['dim_in'], self.params[inputs[2]]['dim_out'])
@@ -49,8 +54,8 @@ class Model(nn.Module):
                 print("Relation not defined")
         self.params = nn.ParameterDict(self.relation_forward)
 
-        #print('[LOG] relation forward: ', self.relation_forward)
-        #print('[LOG] relation inputs: ', self.relation_inputs)
+        print('[LOG] relation forward: ', self.relation_forward)
+        print('[LOG] relation inputs: ', self.relation_inputs)
     
     def forward(self, kwargs):
         available_inputs = kwargs
@@ -58,6 +63,7 @@ class Model(nn.Module):
             for output in self.relations.keys():
                 ## if i have all the variables i can calculate the relation
                 if (output not in available_inputs.keys()) and (set(self.relation_inputs[output]).issubset(available_inputs.keys())):
+                    ## Layer_inputs: Selects the portion of the window from the complete vector that needs to be used for the current layer
                     layer_inputs = [available_inputs[key][:,self.samples[output][key]['backward']:self.samples[output][key]['forward']] for key in self.relation_inputs[output]]
                     if len(layer_inputs) <= 1: ## i have a single forward pass
                         available_inputs[output] = self.relation_forward[output](layer_inputs[0])
