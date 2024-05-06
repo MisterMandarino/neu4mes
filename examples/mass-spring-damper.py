@@ -9,7 +9,8 @@ from neu4mes.visualizer import StandardVisualizer
 # Create neural model
 x = Input('x')
 F = Input('F')
-x_z = Output(x.z(-1), Fir(x.tw(2))+Fir(F))
+func = Fir()
+x_z = Output(x.z(-1), func(x.tw(2))+Fir(F)+func(x.tw(2)))
 #x_z = Minimize(x.z(-1), Fir(x.tw(2))+Fir(F), loss='mse')
 #x_z = Minimize(Fir(x.tw(1)), Fir(y.tw(2))+Fir(F), loss='mse')
 

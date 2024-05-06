@@ -140,7 +140,7 @@ class Neu4mes:
                     if rel[0] in self.model_def['Inputs'].keys():
                         tw = rel[1]
                         if type(tw) is list: ## backward + forward
-                            assert tw[0] >= tw[1], 'The first element of a time window must be less that the second (Ex: [-2, 2])'
+                            assert tw[0] < tw[1], 'The first element of a time window must be less that the second (Ex: [-2, 2])'
                             if rel[0] in self.input_tw_backward.keys(): ## Update if grater
                                 self.input_tw_backward[rel[0]] = max(abs(tw[0]), self.input_tw_backward[rel[0]])
                                 self.input_tw_forward[rel[0]] = max(tw[1], self.input_tw_forward[rel[0]])
@@ -190,14 +190,25 @@ class Neu4mes:
                         else:
                             backward = int(abs(input_name[1][0])/sample_time)
                             forward = int(abs(input_name[1][1])/sample_time)
-                        input_samples[input_name[0]] = {'backward':backward, 'forward':forward}
+
+                        if len(input_name) == 3: ## we have the offset
+                            offset = int(abs(input_name[1][0])/sample_time) + int(input_name[2] / sample_time)
+                        else:
+                            offset = None
+
                     else: ## we have only the backward window
                         if input_name[0] in self.model_def['Inputs']:
                             backward = self.input_ns_backward[input_name[0]] - int(abs(input_name[1])/sample_time)
                             forward = self.input_ns_backward[input_name[0]] + 0
-                        input_samples[input_name[0]] = {'backward':backward, 'forward':forward}
+
+                        if len(input_name) == 3: ## we have the offset
+                            offset = int(abs(input_name[1])/sample_time) + int(input_name[2] / sample_time)
+                        else:
+                            offset = None
+                    
+                    input_samples[input_name[0]] = {'backward':backward, 'forward':forward, 'offset':offset}
                 else: ## we have no window
-                    input_samples[input_name] = {'backward':0, 'forward':1}
+                    input_samples[input_name] = {'backward':0, 'forward':1, 'offset':None}
 
             self.relation_samples[name] = input_samples
 

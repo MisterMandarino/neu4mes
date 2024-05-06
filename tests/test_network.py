@@ -78,12 +78,12 @@ class Neu4mesNetworkBuildingTest(unittest.TestCase):
         for key, value in {k:v for k,v in test.model.params.items() if 'Fir' in k}.items():
             self.assertIn([value.in_features, value.out_features], list_of_dimensions)
 
-        in2 = [[0,1,2,3,4,5,6,7]]
+        in2 = [0,1,2,3,4,5,6,7]
         list_of_windows = [[0,1,2,3,4], [2,3,4,5,6,7], [3,4,5,6]]
         for key, value in test.relation_samples.items():
             if 'Fir' in key:
                 for k, v in value.items():
-                    if k == 'in12':
+                    if k == 'in2':
                         self.assertIn(in2[v['backward']:v['forward']], list_of_windows)
 
     def test_network_building_complex3(self):
@@ -105,38 +105,35 @@ class Neu4mesNetworkBuildingTest(unittest.TestCase):
         for key, value in {k:v for k,v in test.model.params.items() if 'Fir' in k}.items():
             self.assertIn([value.in_features, value.out_features], list_of_dimensions)
 
-        in2 = [[0,1,2,3,4,5,6,7]]
+        in2 = [0,1,2,3,4,5,6,7]
         list_of_windows = [[0,1,2,3,4], [1,2,3,4,5], [4,5,6,7]]
         for key, value in test.relation_samples.items():
             if 'Fir' in key:
                 for k, v in value.items():
-                    if k == 'in12':
+                    if k == 'in2':
                         self.assertIn(in2[v['backward']:v['forward']], list_of_windows)
 
-    '''
     def test_network_building_tw_with_offest(self):
         input2 = Input('in2')
         output = Input('out')
         rel3 = Fir(input2.tw(0.05))
-        rel4 = Fir(input2.tw([0.04,-0.02]))
-        rel5 = Fir(input2.tw([0.04,-0.02],offset=0))
-        rel6 = Fir(input2.tw([0.04,-0.02],offset=-0.02))
+        rel4 = Fir(input2.tw([-0.04,0.02]))
+        rel5 = Fir(input2.tw([-0.04,0.02],offset=0))
+        rel6 = Fir(input2.tw([-0.04,0.02],offset=0.02))
         fun = Output(output.z(-1),rel3+rel4+rel5+rel6)
 
-        test = Neu4mes()
+        test = Neu4mes(verbose=True)
         test.addModel(fun)
         test.neuralizeModel(0.01)
 
-        in2 = [[0,1,2,3,4,5,6]]
-        test_layer = Model(inputs=test.inputs_for_model['in2'], outputs=test.inputs[('in2',(4,2))])
-        self.assertEqual([[1.,2.,3.,4.,5.,6.]],test_layer.predict(in2).tolist())
-
-        test_layer = Model(inputs=test.inputs_for_model['in2'], outputs=test.inputs[('in2',(4,2),0)])
-        self.assertEqual([[-3.,-2.,-1.,0.,1.,2.]],test_layer.predict(in2).tolist())
-
-        test_layer = Model(inputs=test.inputs_for_model['in2'], outputs=test.inputs[('in2',(4,2),-2)])
-        self.assertEqual([[-5.,-4.,-3.,-2.,-1.,0.]],test_layer.predict(in2).tolist())
-    '''
+        in2 = [0,1,2,3,4,5,6]
+        list_of_windows = [[0,1,2,3,4],[1,2,3,4,5,6], [-3,-2,-1,0,1,2], [-5,-4,-3,-2,-1,0]]
+        for key, value in test.relation_samples.items():
+            if 'Fir' in key:
+                for k, v in value.items():
+                    if k == 'in2':
+                        self.assertIn(in2[v['backward']:v['forward']], list_of_windows)
+        
     '''
     def test_network_building_discrete_input_and_local_model(self):
         in1 = Input('in1', values=[2,3,4])
