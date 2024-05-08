@@ -34,9 +34,9 @@ mymodel = Neu4mes(verbose = True, visualizer = StandardVisualizer())
 mymodel.addModel(long_acc_estimator)
 mymodel.neuralizeModel(0.05)
 
-#from torch.fx import symbolic_trace
-#model = symbolic_trace(mymodel.model)
-#print(model.code)
+from torch.fx import symbolic_trace
+model = symbolic_trace(mymodel.model)
+print(model.code)
 
 # Data load
 data_struct = ['velocity','engine','brake','gear','travel','altitude','acc','velKal','acceleration']

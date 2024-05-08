@@ -68,7 +68,7 @@ class Model(nn.Module):
         print('[LOG] relation parameters: ', self.relation_parameters)
     
     def forward(self, kwargs):
-        available_inputs = copy.deepcopy(kwargs)
+        available_inputs = {}
         inputs_keys = list(self.inputs.keys())
         while not set(self.outputs.keys()).issubset(inputs_keys):
             for output in self.relations.keys():
@@ -76,10 +76,12 @@ class Model(nn.Module):
                 if (output not in inputs_keys) and (set(self.relation_inputs[output]).issubset(inputs_keys)):
                     ## Layer_inputs: Selects the portion of the window from the complete vector that needs to be used for the current layer
                     #layer_inputs = [available_inputs[key][:,self.samples[output][key]['backward']:self.samples[output][key]['forward']] for key in self.relation_inputs[output]]
-
                     layer_inputs = []
                     for key in self.relation_inputs[output]:
-                        temp = available_inputs[key][:,self.samples[output][key]['backward']:self.samples[output][key]['forward']]
+                        if key in self.inputs.keys():
+                            temp = kwargs[key][:,self.samples[output][key]['backward']:self.samples[output][key]['forward']]
+                        else:
+                            temp = available_inputs[key]
                         if self.samples[output][key]['offset'] is not None:
                             temp = temp - temp[:, self.samples[output][key]['offset']:self.samples[output][key]['offset']+1]
                         layer_inputs.append(temp)
@@ -95,25 +97,6 @@ class Model(nn.Module):
         return result_dict
 
     '''
-    def forward(self, kwargs):
-        #available_inputs = kwargs
-        available_inputs = {}
-        input_keys = list(self.inputs.keys())
-        for key in input_keys:
-            available_inputs[key] = kwargs[key]
-        while not set(self.outputs.keys()).issubset(input_keys):
-            for output in self.relations.keys():
-                ## if i have all the variables i can calculate the relation
-                if (output not in input_keys) and (set(self.relation_inputs[output]).issubset(input_keys)):
-                    layer_inputs = [available_inputs[key] for key in self.relation_inputs[output]]
-                    if len(layer_inputs) <= 1: ## i have a single forward pass
-                        available_inputs[output] = self.relation_forward[output](layer_inputs[0])
-                        input_keys.append(output)
-                    else:
-                        available_inputs[output] = self.relation_forward[output](layer_inputs)
-                        input_keys.append(output)
-
-
     def forward(self, kwargs):
         available_inputs = kwargs
         while not set(self.outputs.keys()).issubset(available_inputs.keys()):
@@ -140,5 +123,4 @@ class Model(nn.Module):
         ## Return a dictionary with all the outputs final values
         result_dict = {key: available_inputs[key] for key in self.outputs.keys()}
         return result_dict
-
     '''

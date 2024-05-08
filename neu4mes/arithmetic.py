@@ -49,13 +49,12 @@ class Sum_Layer(nn.Module):
         super(Sum_Layer, self).__init__()
 
     def forward(self, inputs):
-        #print('[LOG] inputs[0]: ', inputs[0])
-        #print('[LOG] inputs[1]: ', inputs[1])
-        out = inputs[0]
-        for el in inputs[1:]:
-            out = out + el
-        #print('[LOG] out: ', out)
-        return out
+        #assert inputs[0].shape == inputs[1].shape, f'The Sum Layer expects the tensors to have the same shape! Got {inputs[0].shape} and {inputs[1].shape}'
+        return torch.add(inputs[0], inputs[1])
+        #out = inputs[0]
+        #for el in inputs[1:]:
+        #    out = out + el
+        #return out
         #return torch.stack(inputs).sum(dim=0)
 
 def createSum(name, *inputs):

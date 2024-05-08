@@ -21,6 +21,10 @@ theta_z = Output(theta.z(-1), lin_theta+sin_theta+torque)
 pendolum.addModel(theta_z)
 pendolum.neuralizeModel(0.05)
 
+from torch.fx import symbolic_trace
+model = symbolic_trace(pendolum.model)
+print(model.code)
+
 # Data load
 data_struct = ['time','theta','theta_s','','','torque']
 #data_folder = './datasets/pendulum/data/'
